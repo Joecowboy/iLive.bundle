@@ -1,0 +1,156 @@
+ICON = 'icon-default.png'
+
+#from lib2to3.fixes import fix_intern as s
+#from twisted.internet import protocol, reactor
+#from twisted.python.log import err
+#from twisted.web.client import Agent, RedirectAgent
+#from rtmpy import client
+
+import time
+
+
+channel_listings = [
+		["Estúdio A FM", "vxnv9sklyk0qkx2","rtmp://46.105.114.36/edge/"], ["BlueHD", "1mfydd1nz697w89","rtmp://142.4.216.149/edge/"],
+		["DANSERTV_3", "gz3d47y2phxi78x","rtmp://142.4.216.156/edge/"], ["CNN", "26j8feazortod0b","rtmp://142.4.216.149/edge/"],
+		["Eurosport 2 PT", "lhz1koxd78ok7it","rtmp://5.39.65.109/edge/"], ["Nickelodeon", "8f7p62ebc1aq711","rtmp://37.59.35.215/edge/"]
+]
+
+####################################################################################################
+def NormalizeURL(url):
+
+	return url
+
+####################################################################################################
+def GetItemInfo(url, itemInfo):
+
+	streamId = url.split('=')[1]
+
+	if itemInfo == "Metadata":
+		cname = String.Unquote(url.rpartition('/')[0].rpartition('/')[2].split('watch-live-')[1].split('-channel-for-free')[0], usePlus=True).replace("_"," ")
+		title = "Watch Live " + cname
+		show = "Check out the TV guide to find out"
+		duration = None
+		summary = "You are watching " + cname + " part of live stream channel line up on iLive."
+		thumb = "http://static.ilive.to/images/channels/"+streamId+"_snapshot.jpg"
+		localtime = time.asctime(time.localtime(time.time()))
+		airdate = Datetime.ParseDate(localtime)
+		obj = EpisodeObject(
+			url = url,
+			title = title,
+			summary = summary,
+			duration = duration,
+			show = show,
+			source_title = 'iLive',
+			originally_available_at = airdate,
+			thumb = Callback(GetThumb, url=thumb))
+
+	elif itemInfo == "MediaObject":
+		url_MO = "rtmp://fms.ilive.to:1935/app/_definst_/"
+		#url_MO = "rtmp://fmsca.ilive.to:1935/app/_definst_/"
+		#url_MO = "rtmp://live.ilive.to/redirect/"
+		#url_MO = "rtmp://142.4.216.91/edge"
+		
+		swfUrl = "http://static.ilive.to/jwplayer/player.swf"
+		pageUrl = url.rpartition('/')[0]
+		clip = streamId
+		app = "app/_definst_"
+
+		#for elm in channel_listings:
+		#	if s.FixIntern(elm[1]) == s.FixIntern(streamId):
+		#		url_MO = elm[2]
+		#	else:
+
+		#url_MO = RTMPRedirect_Get(streamId)
+
+		#if url_MO:
+		#	url_MO = "rtmp://live2.ilive.to/redirect/"
+		#	clip = streamId+".flv"
+		
+		obj = [MediaObject(
+				parts = [PartObject(key=RTMPVideoURL(url=url_MO, clip=clip, subscribe=clip, swfUrl=swfUrl, swfVfy=0, tcUrl=url_MO, pageUrl=pageUrl, args=[False, clip], buffer=1200, timeout=60, live=True))],
+				video_frame_rate = "25",
+				video_resolution = "480",
+				width = "640",
+				height = "360",
+				#aspect_ratio = "1.3333",
+				protocols = Protocol.RTMP,
+				container = Container.MKV,
+				video_codec = VideoCodec.H264,
+				audio_codec = AudioCodec.AAC,
+				bitrate = "700",
+				audio_channels = 2,
+				optimized_for_streaming = True)]
+
+	return obj
+
+
+####################################################################################################
+def RTMPRedirect_Get(streamId):
+	url_MO_H = "rtmp://live2.ilive.to/redirect/"+streamId+".flv"
+
+	#factory = client.ClientFactory()
+	#connector = reactor.connectTCP(url_MO_H, 1935, factory)
+	#if reactor.running is False:
+	#	reactor.run()
+
+	#if error
+	url = True
+
+	return url
+
+def display(response):
+	print "Received response"
+	print response
+
+
+####################################################################################################
+def MetadataObjectForURL(url):
+
+	return GetItemInfo(url,'Metadata')
+
+
+###################################################################################################
+def MediaObjectsForURL(url):
+
+	return GetItemInfo(url,'MediaObject')
+
+
+####################################################################################################
+def TestURLs():
+
+	test_urls = []
+	i = 1
+	page = HTML.ElementFromURL('http://www.ilive.to/channels/?p=1')
+	for link in page.xpath("//li"):
+		if i > 6:
+			if len(test_urls) < 3:
+				url = channels.xpath('./a')[0].get('href')
+				streamId = thumb.rpartition('/')[2].split('_')[0]
+				url = url+"/?streamId="+streamId
+	
+				if url not in test_urls:
+					test_urls.append(url)
+			else:
+				break
+		else:
+			i += 1
+
+	return test_urls
+
+
+####################################################################################################
+def GetThumb(url):
+
+	try:
+		data = HTTP.Request(url, cacheTime=CACHE_1MONTH).content
+		return DataObject(data, 'image/jpeg')
+	except:
+		return Redirect(R(ICON))
+
+
+####################################################################################################
+@indirect
+def PlayVideo(url, clip, swf_Url):
+
+	Log(url)
+	return IndirectResponse(VideoClipObject,key = RTMPVideoURL(url=url, clip=clip, swf_Url=swf_Url, live=True))

@@ -1,0 +1,4 @@
+This is a Plex channel plugin that pulls in live streaming Broadcasts from the website iLive.to.
+
+It uses live RTMP server.  However, at the moment Plex Media Sever's transcoder live RTMP is broken.
+
